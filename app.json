@@ -1,0 +1,20 @@
+{
+  "devtools_port": 9090,
+  "startup_app": {
+    "name": "js-api",
+    "url": "http://localhost.mac/local-docking/",
+    "uuid": "helloOpenfin",
+    "applicationIcon": "http://localhost.mac/favicon.ico",
+    "autoShow": true
+  },
+  "runtime": {
+    "arguments": "",
+    "version": "stable"
+  },
+  "shortcut": {
+    "company": "OpenFin",
+    "description": "js-api-testbench",
+    "icon": "http://localhost:5000/favicon.ico",
+    "name": "js-api"
+  }
+}
