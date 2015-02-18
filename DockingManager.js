@@ -5,9 +5,8 @@ DockingManager = (function(){
 
     var instance = null;
     var _windows = [];
-    var _snappedWindows = [];
+    var _snappedWindows = {};
     var _openfinWindows = {};
-    var docked = [];
 
     function DockingManager(){
 
@@ -31,6 +30,7 @@ DockingManager = (function(){
         this._isPointInVerticalZone = this._isPointInVerticalZone.bind(this);
         this._isPointInHorizontalZone = this._isPointInHorizontalZone.bind(this);
         this.dockAllSnappedWindows = this.dockAllSnappedWindows.bind(this);
+        this._onVisibilityChanged = this._onVisibilityChanged.bind(this);
     };
 
     DockingManager.prototype.addOpenfinWindow = function(openfinWindow){
@@ -42,7 +42,31 @@ DockingManager = (function(){
 
         window.onMove = this._onWindowMove;
         window.onMoveComplete = this.dockAllSnappedWindows;
+        window.document.addEventListener("visibilitychange", this._onVisibilityChanged);
         _windows.push(window);
+    };
+
+    DockingManager.prototype._onVisibilityChanged = function(event){
+
+        console.log(event.target.defaultView.name);
+
+        var document = event.target;
+        var currentWindow = document.defaultView;
+
+        for(var i = _windows.length - 1; i >= 0; --i){
+
+            if(currentWindow == _windows[i]) continue;
+            if(document.hidden) {
+
+                console.log("minimizing", _windows[i].name);
+                this.getOpenfinWindow(_windows[i]).minimize();
+
+            } else {
+
+                console.log("maximising", _windows[i].name);
+                this.getOpenfinWindow(_windows[i]).restore();
+            }
+        }
     };
 
     DockingManager.prototype._onWindowMove = function(event){
@@ -50,10 +74,11 @@ DockingManager = (function(){
         var _window = null;
         var _currentWindow = event.target.window;
         var position = {x: null, y: null};
+
         for(var i = _windows.length - 1; i >= 0; i--){
 
             _window = _windows[i];
-            if(_window == _currentWindow ) continue;
+            if(_window == _currentWindow || (_currentWindow.dockingGroup && _currentWindow.dockingGroup.indexOf(_window) > -1) || (_window.dockingGroup && _window.dockingGroup.indexOf(_currentWindow) > -1)) continue;
 
             var snappingPosition = this.isSnapable(event.position, _window);
             if(!snappingPosition) snappingPosition = this._reverse(this.isSnapable(_window, event.position));
@@ -78,6 +103,9 @@ DockingManager = (function(){
             position.y = position.y ? position.y : event.position.screenTop;
 
             _currentWindow.moveTo(position.x, position.y);
+        } else {
+
+          //  this.getOpenfinWindow(_currentWindow).moveTo(_currentWindow.screenLeft, _currentWindow.screenTop);
         }
     };
 
@@ -149,53 +177,56 @@ DockingManager = (function(){
         }
     };
 
-    DockingManager.prototype.addToSnapList= function (){
+    DockingManager.prototype.addToSnapList= function (window1, window2){
 
-        var window = null;
-
-        for(var i = arguments.length - 1; i >= 0; i--){
-
-            window = arguments[i];
-
-            if (_snappedWindows.indexOf(window) < 0) {
-
-                _snappedWindows.push(window);
-                console.log("added", window.name, " to the list.");
-            }
-        }
+        _snappedWindows[window1.name + window2.name] = [window1, window2];
     };
 
-    DockingManager.prototype.removeFromSnapList = function (){
+    DockingManager.prototype.removeFromSnapList = function (window1, window2){
 
-        var window = null;
-
-        for(var i = arguments.length - 1; i >= 0; i--){
-
-            window = arguments[i];
-            var index = _snappedWindows.indexOf(window);
-
-            if (index >= 0) {
-
-                _snappedWindows.splice(index, 1);
-
-            }
-        }
+        if(_snappedWindows[window1.name + window2.name])_snappedWindows[window1.name + window2.name] = null;
     }
 
     DockingManager.prototype.dockAllSnappedWindows = function(event){
 
-        console.log("docking", _snappedWindows.length, "windows");
         var movedWindow = event.target;
-
-        console.log(movedWindow.screenLeft, movedWindow.screenTop);
         this.getOpenfinWindow(movedWindow).moveTo(movedWindow.screenLeft, movedWindow.screenTop);
-        var firstWindow = this.getOpenfinWindow(_snappedWindows.shift());
-        var currentWindow = null;
 
-        while(_snappedWindows.length){
+        for(var name in _snappedWindows){
 
-            currentWindow = _snappedWindows.shift();
-            this.getOpenfinWindow(currentWindow).joinGroup(firstWindow, currentWindow.onDock);
+            var currentWindow = _snappedWindows[name];
+            if(!currentWindow) continue;
+            _snappedWindows[name] = null;
+
+            this._addWindowToTheGroup(currentWindow[0], currentWindow[1]);
+        }
+    };
+
+    DockingManager.prototype._addWindowToTheGroup = function(window1, windowGroup){
+
+        if(!windowGroup.dockingGroup) windowGroup.dockingGroup = [windowGroup];
+
+        if(window1.dockingGroup){
+
+            this.inviteGroupMemebers(window1.dockingGroup, windowGroup);
+            return;
+        }
+
+        this.getOpenfinWindow(window1).joinGroup(windowGroup, window1.onDock);
+
+        if(windowGroup.dockingGroup.indexOf(windowGroup) < 0) windowGroup.dockingGroup.push(window1);
+    };
+
+    DockingManager.prototype.inviteGroupMemebers = function(group, grouptToJoin){
+
+        for(var i = group.length - 1; i >= 0; i--){
+
+            var member = group[i];
+            if(member == grouptToJoin) continue;
+            this.getOpenfinWindow(member).joinGroup(grouptToJoin, member.onDock);
+            if(grouptToJoin.dockingGroup.indexOf(memeber) < 0) grouptToJoin.dockingGroup.push(member);
+
+            //if(memeber.dockingGroup) this.inviteGroupMemebers(member.dockingGroup, memeber);
         }
     };
 
@@ -207,6 +238,10 @@ DockingManager = (function(){
     DockingManager.prototype.undock = function(window){
 
         this.getOpenfinWindow(window).leaveGroup();
+        if(window.dockingGroup){
+
+            this.inviteGroupMemebers(window.dockingGroup, window);
+        }
     }
 
     return DockingManager;

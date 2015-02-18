@@ -5,6 +5,10 @@
 
 var dockingManager = new DockingManager();
 
+document.addEventListener("visibilitychange", function() {
+
+    console.log(document.hidden, document.visibilityState);
+});
 
 window.addEventListener("DOMContentLoaded", function(){
 
@@ -32,7 +36,6 @@ window.addEventListener("DOMContentLoaded", function(){
     }
 
     document.getElementById("createWindows").onclick = createChildWindow;
-
     registerChild(window);
 
 });
