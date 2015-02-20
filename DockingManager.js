@@ -86,7 +86,7 @@ DockingManager = (function(){
             if(snappingPosition){
 
                 event.defaultPrevented = true;
-                var pos = this.snapToWindow(event, _window, snappingPosition);
+                var pos = this.snapToWindow(event, _window, snappingPosition, _currentWindow);
                 if(!position.x)position.x = pos.x;
                 if(!position.y)position.y = pos.y;
                 this.addToSnapList(_currentWindow, _window);
@@ -164,17 +164,31 @@ DockingManager = (function(){
         }
     };
 
-    DockingManager.prototype.snapToWindow = function(event, window, position){
+    DockingManager.prototype.snapToWindow = function(event, window, position, currentWindow){
 
         var currentWindow = event.target.window;
 
         switch(position){
 
-            case "right": return {x: window.screenLeft + window.outerWidth + this.spacing, y: null};
-            case "left": return {x: window.screenLeft - currentWindow.outerWidth - this.spacing, y: null};
-            case "top":  return {x: null, y: window.screenTop - currentWindow.outerHeight - this.spacing};
-            case "bottom": return {x: null, y: window.screenTop + window.outerHeight + this.spacing};
+            case "right": return {x: window.screenLeft + window.outerWidth + this.spacing, y: this._getVerticalEdgeSnapping(window, currentWindow) };
+            case "left": return {x: window.screenLeft - currentWindow.outerWidth - this.spacing, y: this._getVerticalEdgeSnapping(window, currentWindow)};
+            case "top":  return {x: this._getHorizontalEdgeSnapping(window, currentWindow), y: window.screenTop - currentWindow.outerHeight - this.spacing};
+            case "bottom": return {x: this._getHorizontalEdgeSnapping(window, currentWindow), y: window.screenTop + window.outerHeight + this.spacing};
         }
+    };
+
+    DockingManager.prototype._getVerticalEdgeSnapping = function(window, currentWindow){
+
+        if(currentWindow.screenTop <= window.screenTop + this.range) return window.screenTop;
+        if(currentWindow.screenTop + currentWindow.outerHeight >= window.screenTop + window.outerHeight - this.range) return window.screenTop + window.outerHeight - currentWindow.outerHeight;
+        return null;
+    };
+
+    DockingManager.prototype._getHorizontalEdgeSnapping = function(window, currentWindow){
+
+        if(currentWindow.screenLeft <= window.screenLeft + this.range) return window.screenLeft;
+        if(currentWindow.screenLeft + currentWindow.outerWidth >= window.screenLeft + window.outerWidth - this.range) return window.screenLeft + window.outerWidth - currentWindow.outerWidth;
+        return null;
     };
 
     DockingManager.prototype.addToSnapList= function (window1, window2){
