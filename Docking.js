@@ -11,33 +11,33 @@ document.addEventListener("visibilitychange", function() {
 });
 
 window.addEventListener("DOMContentLoaded", function(){
+	fin.desktop.main(function(){
+		dockingManager.addOpenfinWindow(fin.desktop.Window.getCurrent());
 
-   dockingManager.addOpenfinWindow(fin.desktop.Window.getCurrent());
+		var counter = 0;
 
-   var counter = 0;
+		function createChildWindow(){
 
-   function createChildWindow(){
+		    var child = new fin.desktop.Window({
+		        name: "child" + counter++,
+		        url: "childWindow.html",
+		        defaultWidth: 150,
+		        defaultHeight: 100,
+		        defaultTop: screen.availHeight - 100 ,
+		        defaultLeft: screen.availWidth - 150,
+		        frame: false,
+		        resize: true,
+		        windowState: "normal",
+		        autoShow: true
+		    });
 
-        var child = new fin.desktop.Window({
-            name: "child" + counter++,
-            url: "childWindow.html",
-            defaultWidth: 150,
-            defaultHeight: 100,
-            defaultTop: screen.availHeight - 100 ,
-            defaultLeft: screen.availWidth - 150,
-            frame: false,
-            resize: true,
-            windowState: "normal",
-            autoShow: true
-        });
+		   dockingManager.addOpenfinWindow(child);
+		    return child;
+		}
 
-       dockingManager.addOpenfinWindow(child);
-        return child;
-    }
-
-    document.getElementById("createWindows").onclick = createChildWindow;
-    registerChild(window);
-
+		document.getElementById("createWindows").onclick = createChildWindow;
+		registerChild(window);
+	});
 });
 
 function registerChild(child){
